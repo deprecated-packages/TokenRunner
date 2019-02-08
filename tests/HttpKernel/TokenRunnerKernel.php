@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace Symplify\TokenRunner\Tests\DependencyInjection;
+namespace Symplify\TokenRunner\Tests\HttpKernel;
 
 use Symfony\Component\Config\Loader\DelegatingLoader;
 use Symfony\Component\Config\Loader\GlobFileLoader;
@@ -8,33 +8,54 @@ use Symfony\Component\Config\Loader\LoaderInterface;
 use Symfony\Component\Config\Loader\LoaderResolver;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpKernel\Bundle\BundleInterface;
 use Symfony\Component\HttpKernel\Config\FileLocator;
 use Symfony\Component\HttpKernel\Kernel;
+use Symplify\PackageBuilder\Contract\HttpKernel\ExtraConfigAwareKernelInterface;
 use Symplify\PackageBuilder\DependencyInjection\CompilerPass\AutowireArrayParameterCompilerPass;
 use Symplify\PackageBuilder\DependencyInjection\CompilerPass\ConfigurableCollectorCompilerPass;
-use Symplify\PackageBuilder\HttpKernel\SimpleKernelTrait;
 use Symplify\PackageBuilder\Yaml\FileLoader\ParameterImportsYamlFileLoader;
 
-final class TokenRunnerKernel extends Kernel
+final class TokenRunnerKernel extends Kernel implements ExtraConfigAwareKernelInterface
 {
-    use SimpleKernelTrait;
-
     /**
-     * @var string
+     * @var string[]
      */
-    private $configFile;
-
-    public function __construct(string $configFile)
-    {
-        parent::__construct('token_runner', true);
-
-        $this->configFile = $configFile;
-    }
+    private $configs = [];
 
     public function registerContainerConfiguration(LoaderInterface $loader): void
     {
         $loader->load(__DIR__ . '/../../config/config.yml');
-        $loader->load($this->configFile);
+
+        foreach ($this->configs as $config) {
+            $loader->load($config);
+        }
+    }
+
+    /**
+     * @param string[] $configs
+     */
+    public function setConfigs(array $configs): void
+    {
+        $this->configs = $configs;
+    }
+
+    public function getCacheDir(): string
+    {
+        return sys_get_temp_dir() . '/token_runner';
+    }
+
+    public function getLogDir(): string
+    {
+        return sys_get_temp_dir() . '/token_runner_log';
+    }
+
+    /**
+     * @return BundleInterface[]
+     */
+    public function registerBundles(): iterable
+    {
+        return [];
     }
 
     protected function build(ContainerBuilder $containerBuilder): void
